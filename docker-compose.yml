@@ -1,0 +1,12 @@
+services:
+  novel-translator:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - TRANSLATE_MODEL=${TRANSLATE_MODEL:-claude-sonnet-5-5}
+      - SMALL_MODEL=${SMALL_MODEL:-claude-haiku-4-5}
+    volumes:
+      - ./data:/app/data   # SQLite อยู่ที่นี่ ไม่หายตอน rebuild
+    restart: unless-stopped
