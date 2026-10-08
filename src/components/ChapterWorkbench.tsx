@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { TranslationIssue } from "@/db/schema";
 import { saveSegment } from "@/app/actions";
+import { ManualPanel } from "./ManualPanel";
 
 type Props = {
   chapterId: number;
@@ -14,6 +15,7 @@ type Props = {
   defaultStyleId: number | null;
   models: string[];
   defaultModel: string;
+  mode: "api" | "manual";
 };
 
 export function ChapterWorkbench(props: Props) {
@@ -122,6 +124,8 @@ export function ChapterWorkbench(props: Props) {
             ))}
           </select>
         </div>
+{props.mode === "api" && (
+          <>
         <div>
           <label className="label">โมเดลแปล</label>
           <select className="input" value={model} onChange={(e) => setModel(e.target.value)}>
@@ -136,6 +140,8 @@ export function ChapterWorkbench(props: Props) {
         <button className="btn-primary" disabled={!!busy} onClick={translate}>
           {busy === "translate" ? "กำลังแปล..." : tr ? "② แปลใหม่" : "② แปล"}
         </button>
+          </>
+        )}
         {props.versions.length > 0 && (
           <div className="ml-auto">
             <label className="label">เวอร์ชัน</label>
@@ -151,6 +157,15 @@ export function ChapterWorkbench(props: Props) {
           </div>
         )}
       </div>
+
+      {props.mode === "manual" && (
+        <ManualPanel
+          chapterId={props.chapterId}
+          styleId={styleId ?? null}
+          hasTranslation={!!tr}
+          missingCount={tr ? tr.segments.filter((x, i) => i < props.paragraphs.length && !x).length + Math.max(0, props.paragraphs.length - tr.segments.length) : 0}
+        />
+      )}
 
       {(log.length > 0 || progress) && (
         <div className="card space-y-1 text-sm">
@@ -192,7 +207,13 @@ export function ChapterWorkbench(props: Props) {
               </div>
               <div>
                 {tr ? (
-                  <Segment translationId={tr.id} index={i} initial={tr.segments[i] ?? ""} />
+                  <Segment
+                    // Re-mount when the stored text changes (e.g. a pasted continuation merged into this version).
+                    key={tr.segments[i] ?? ""}
+                    translationId={tr.id}
+                    index={i}
+                    initial={tr.segments[i] ?? ""}
+                  />
                 ) : (
                   <span className="text-sm text-stone-400">—</span>
                 )}

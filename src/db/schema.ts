@@ -32,6 +32,8 @@ export const novels = sqliteTable("novels", {
   defaultStyleId: integer("default_style_id").references(() => stylePresets.id, {
     onDelete: "set null",
   }),
+  // "api": translate with the Anthropic API; "manual": copy prompts into a Claude chat / Project.
+  translateMode: text("translate_mode").$type<"api" | "manual">().notNull().default("api"),
   createdAt: createdAt(),
 });
 

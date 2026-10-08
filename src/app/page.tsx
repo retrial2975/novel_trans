@@ -21,7 +21,7 @@ export default function Home() {
     <div className="space-y-6">
       {!hasApiKey() && (
         <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-          ยังไม่ได้ตั้งค่า <code>ANTHROPIC_API_KEY</code> — จัดการคลังคำได้ แต่สกัดคำ/แปลไม่ได้จนกว่าจะตั้งค่าใน environment
+          ยังไม่ได้ตั้งค่า <code>ANTHROPIC_API_KEY</code> — ใช้วิธีแปล ยังไม่ได้ตั้งค่า <code>ANTHROPIC_API_KEY</code> — จัดการคลังคำได้ แต่สกัดคำ/แปลไม่ได้จนกว่าจะตั้งค่าใน environmentquot;คัดลอกไปแปลในแชท Claudeยังไม่ได้ตั้งค่า <code>ANTHROPIC_API_KEY</code> — จัดการคลังคำได้ แต่สกัดคำ/แปลไม่ได้จนกว่าจะตั้งค่าใน environmentquot; ได้ตามปกติ แต่โหมด API จะใช้ไม่ได้จนกว่าจะตั้งค่าใน environment
         </div>
       )}
       <h1 className="text-2xl font-semibold">นิยายทั้งหมด</h1>
@@ -41,8 +41,8 @@ export default function Home() {
         </ul>
       )}
 
-      <form action={createNovel} className="card grid gap-3 sm:grid-cols-4">
-        <div className="sm:col-span-4 font-medium">เพิ่มนิยาย</div>
+      <form action={createNovel} className="card grid gap-3 sm:grid-cols-5">
+        <div className="sm:col-span-5 font-medium">เพิ่มนิยาย</div>
         <div>
           <label className="label">ชื่อจีน *</label>
           <input name="titleZh" required className="input" />
@@ -57,6 +57,13 @@ export default function Home() {
             {presets.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">วิธีแปล</label>
+          <select name="translateMode" className="input" defaultValue="api">
+            <option value="api">ผ่าน API</option>
+            <option value="manual">คัดลอกไปแปลในแชท Claude</option>
           </select>
         </div>
         <div className="flex items-end">

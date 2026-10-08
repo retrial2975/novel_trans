@@ -142,6 +142,7 @@ export default async function ChapterPage({
         defaultStyleId={novel.defaultStyleId ?? presets[0]?.id ?? null}
         models={models}
         defaultModel={MODELS.translate}
+        mode={novel.translateMode}
       />
 
       {summary && (

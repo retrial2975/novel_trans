@@ -108,6 +108,13 @@ export default async function NovelPage({ params }: { params: Promise<{ id: stri
                 ))}
               </select>
             </div>
+            <div>
+              <label className="label">วิธีแปล</label>
+              <select name="translateMode" defaultValue={novel.translateMode} className="input">
+                <option value="api">ผ่าน API (กดปุ่มเดียว เสียค่า API)</option>
+                <option value="manual">คัดลอกไปแปลในแชท Claude / Project (ไม่เสียค่า API)</option>
+              </select>
+            </div>
             <button className="btn">บันทึก</button>
           </form>
 

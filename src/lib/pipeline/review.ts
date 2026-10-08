@@ -1,10 +1,11 @@
 import "server-only";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { buildChapterContext } from "../novel-context";
 import { getClient, MODELS, recordUsage, RefusalError } from "../ai";
+import { applyReview } from "./apply";
 
 const ReviewOutput = z.object({
   summary: z.string(),
@@ -20,7 +21,7 @@ const ReviewOutput = z.object({
   ),
 });
 
-const SYSTEM = `คุณช่วยดูแลความต่อเนื่องของงานแปลนิยายจีนเป็นไทย
+const REVIEW_SYSTEM = `คุณช่วยดูแลความต่อเนื่องของงานแปลนิยายจีนเป็นไทย
 ได้รับคำแปลภาษาไทยของตอนล่าสุด รายชื่อตัวละคร และตารางสรรพนามปัจจุบัน ให้ทำ 2 อย่าง:
 
 1. summary: สรุปเหตุการณ์ของตอนนี้เป็นภาษาไทย 3–6 ประโยค เน้นสิ่งที่ต้องรู้เพื่อแปลตอนต่อไปให้ต่อเนื่อง (ใครทำอะไร ความสัมพันธ์ที่เปลี่ยน สถานะ/สถานที่ปัจจุบัน)
@@ -52,7 +53,7 @@ export async function reviewChapter(chapterId: number) {
   const response = await getClient().messages.parse({
     model,
     max_tokens: 8000,
-    system: SYSTEM,
+    system: REVIEW_SYSTEM,
     messages: [
       {
         role: "user",
@@ -66,46 +67,6 @@ export async function reviewChapter(chapterId: number) {
   const out = response.parsed_output;
   if (!out) throw new Error("อ่านผลลัพธ์จากโมเดลไม่ได้");
 
-  const idByName = new Map(characters.map((c) => [c.th, c.id]));
-  let proposed = 0;
-  db.transaction((tx) => {
-    tx.insert(schema.chapterSummaries)
-      .values({ chapterId, summary: out.summary })
-      .onConflictDoUpdate({ target: schema.chapterSummaries.chapterId, set: { summary: out.summary } })
-      .run();
-
-    // Replace earlier pending proposals made for this chapter.
-    tx.delete(schema.relationships)
-      .where(
-        and(
-          eq(schema.relationships.novelId, chapter.novelId),
-          eq(schema.relationships.status, "pending"),
-          eq(schema.relationships.validFromChapter, chapter.number),
-        ),
-      )
-      .run();
-
-    for (const r of out.relationship_changes) {
-      const speakerId = idByName.get(r.speaker.trim());
-      const listenerId = idByName.get(r.listener.trim());
-      if (!speakerId || !listenerId || speakerId === listenerId) continue;
-      const current = ctx.pronouns.find((p) => p.speakerTh === r.speaker.trim() && p.listenerTh === r.listener.trim());
-      if (current && current.selfPronoun === r.self_pronoun && current.addressTerm === r.address_term) continue;
-      tx.insert(schema.relationships)
-        .values({
-          novelId: chapter.novelId,
-          speakerId,
-          listenerId,
-          relation: r.relation || null,
-          selfPronoun: r.self_pronoun || null,
-          addressTerm: r.address_term || null,
-          validFromChapter: chapter.number,
-          notes: r.reason || null,
-          status: "pending",
-        })
-        .run();
-      proposed++;
-    }
-  });
+  const { proposed } = applyReview(chapterId, out.summary, out.relationship_changes);
   return { summary: out.summary, proposed };
 }

@@ -1,11 +1,9 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
-import { desc, eq } from "drizzle-orm";
-import { getDb, schema } from "@/db";
 import { buildChapterContext } from "../novel-context";
 import { buildChapterBlock, buildChunkMessage, buildStyleBlock } from "../prompt";
 import { chunkParagraphs, parseNumberedOutput, splitParagraphs } from "../text";
-import { checkConsistency } from "../check";
+import { saveTranslation } from "./apply";
 import { EFFORT, getClient, MODELS, recordUsage, RefusalError, fallbacksEnabled } from "../ai";
 
 export type TranslateEvent =
@@ -46,8 +44,7 @@ export async function* translateChapter(
   chapterId: number,
   opts: { styleId?: number | null; model?: string } = {},
 ): AsyncGenerator<TranslateEvent> {
-  const db = getDb();
-  const { chapter, style, ctx, matcher } = buildChapterContext(chapterId, opts.styleId);
+  const { chapter, style, ctx } = buildChapterContext(chapterId, opts.styleId);
   const model = opts.model || MODELS.translate;
 
   const paragraphs = splitParagraphs(chapter.textZh);
@@ -113,35 +110,6 @@ export async function* translateChapter(
     yield { type: "chunk", index: ci, done: ci + 1 };
   }
 
-  const issues = checkConsistency(matcher, paragraphs, segments);
-  const last = db
-    .select({ version: schema.translations.version })
-    .from(schema.translations)
-    .where(eq(schema.translations.chapterId, chapterId))
-    .orderBy(desc(schema.translations.version))
-    .get();
-  const version = (last?.version ?? 0) + 1;
-
-  const saved = db.transaction((tx) => {
-    const row = tx
-      .insert(schema.translations)
-      .values({
-        chapterId,
-        styleId: style.id,
-        segments,
-        textTh: segments.join("\n\n"),
-        model,
-        version,
-        issues,
-      })
-      .returning()
-      .get();
-    tx.update(schema.chapters)
-      .set({ status: "translated", ...(titleTh ? { titleTh } : {}) })
-      .where(eq(schema.chapters.id, chapterId))
-      .run();
-    return row;
-  });
-
-  yield { type: "saved", translationId: saved.id, version, issues: issues.length };
+  const saved = saveTranslation({ chapterId, styleId: style.id, segments, model, titleTh });
+  yield { type: "saved", translationId: saved.translation.id, version: saved.translation.version, issues: saved.issues };
 }

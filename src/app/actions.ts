@@ -30,7 +30,12 @@ export async function createNovel(fd: FormData) {
   if (!titleZh) return;
   const row = getDb()
     .insert(novels)
-    .values({ titleZh, titleTh: optStr(fd, "titleTh"), defaultStyleId: num(fd, "defaultStyleId") })
+    .values({
+      titleZh,
+      titleTh: optStr(fd, "titleTh"),
+      defaultStyleId: num(fd, "defaultStyleId"),
+      translateMode: str(fd, "translateMode") === "manual" ? "manual" : "api",
+    })
     .returning()
     .get();
   redirect(`/novels/${row.id}`);
@@ -40,7 +45,12 @@ export async function updateNovel(fd: FormData) {
   const id = num(fd, "id")!;
   getDb()
     .update(novels)
-    .set({ titleZh: str(fd, "titleZh"), titleTh: optStr(fd, "titleTh"), defaultStyleId: num(fd, "defaultStyleId") || null })
+    .set({
+      titleZh: str(fd, "titleZh"),
+      titleTh: optStr(fd, "titleTh"),
+      defaultStyleId: num(fd, "defaultStyleId") || null,
+      translateMode: str(fd, "translateMode") === "manual" ? "manual" : "api",
+    })
     .where(eq(novels.id, id))
     .run();
   revalidatePath(`/novels/${id}`);

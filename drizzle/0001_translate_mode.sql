@@ -1,0 +1,1 @@
+ALTER TABLE `novels` ADD `translate_mode` text DEFAULT 'api' NOT NULL;
